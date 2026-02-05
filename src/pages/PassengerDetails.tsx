@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// Imports removed
 import Header from '@/components/Header';
 import BookingSteps from '@/components/BookingSteps';
 import SeatMap from '@/components/SeatMap';
@@ -313,29 +313,18 @@ const PassengerDetails = () => {
                               {passenger.firstName || `${passenger.type === 'adult' ? 'Adult' : 'Child'}`}
                             </span>
                           </div>
-                          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-2">
-                            <button
-                              onClick={() => updateMeal(passenger.id, 'none', 0)}
-                              className={`p-3 rounded-lg border text-sm transition-colors ${!addOns.meals.find((m) => m.passengerId === passenger.id)
-                                  ? 'border-primary bg-primary/10'
-                                  : 'border-border hover:border-primary/50'
-                                }`}
-                            >
-                              No Meal
-                            </button>
-                            {meals.map((meal) => (
-                              <button
-                                key={meal.id}
-                                onClick={() => updateMeal(passenger.id, meal.id, meal.price)}
-                                className={`p-3 rounded-lg border text-sm transition-colors ${addOns.meals.find((m) => m.passengerId === passenger.id && m.mealId === meal.id)
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-primary/50'
-                                  }`}
-                              >
-                                <div className="font-medium">{meal.name}</div>
-                                <div className="text-muted-foreground">₹{meal.price}</div>
-                              </button>
-                            ))}
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Enter meal preference (e.g., Vegetarian)"
+                              onChange={(e) => {
+                                // Simple string match or just store the text as 'mealId'
+                                // For this task, we prioritize the text input UI. 
+                                // We'll set a standard price or 0 if not found.
+                                const text = e.target.value;
+                                const matched = meals.find(m => m.name.toLowerCase().includes(text.toLowerCase()));
+                                updateMeal(passenger.id, text, matched ? matched.price : 0);
+                              }}
+                            />
                           </div>
                         </div>
                       ))}
@@ -357,23 +346,15 @@ const PassengerDetails = () => {
                               {passenger.firstName || `${passenger.type === 'adult' ? 'Adult' : 'Child'}`}
                             </span>
                           </div>
-                          <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2">
-                            {baggageOptions.map((option) => (
-                              <button
-                                key={option.id}
-                                onClick={() => updateBaggage(passenger.id, option.id, option.price)}
-                                className={`p-3 rounded-lg border text-sm transition-colors ${(option.id === 'none' && !addOns.baggage.find((b) => b.passengerId === passenger.id)) ||
-                                    addOns.baggage.find((b) => b.passengerId === passenger.id && b.baggageId === option.id)
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-primary/50'
-                                  }`}
-                              >
-                                <div className="font-medium text-xs">{option.name}</div>
-                                {option.price > 0 && (
-                                  <div className="text-muted-foreground">₹{option.price}</div>
-                                )}
-                              </button>
-                            ))}
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Enter extra baggage (e.g., 5kg)"
+                              onChange={(e) => {
+                                const text = e.target.value;
+                                const matched = baggageOptions.find(b => b.name.toLowerCase().includes(text.toLowerCase()));
+                                updateBaggage(passenger.id, text, matched ? matched.price : 0);
+                              }}
+                            />
                           </div>
                         </div>
                       ))}

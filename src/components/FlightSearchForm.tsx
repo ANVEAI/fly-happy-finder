@@ -4,38 +4,20 @@ import { motion } from 'framer-motion';
 import {
   Plane,
   ArrowLeftRight,
-  Calendar,
-  Users,
   Search,
-  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { airports } from '@/data/mockData';
 import { useBooking } from '@/context/BookingContext';
-import { Airport } from '@/types/booking';
-import { format } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 
 const FlightSearchForm = () => {
   const navigate = useNavigate();
   const { searchParams, setSearchParams } = useBooking();
-  const [dateOpen, setDateOpen] = useState(false);
-  const [returnDateOpen, setReturnDateOpen] = useState(false);
-  const [passengersOpen, setPassengersOpen] = useState(false);
 
-  const tripTypes = [
-    { value: 'one-way', label: 'One Way' },
-    { value: 'round-trip', label: 'Round Trip' },
-    { value: 'multi-city', label: 'Multi City' },
-  ];
-
-  const classTypes = [
-    { value: 'economy', label: 'Economy' },
-    { value: 'business', label: 'Business' },
-    { value: 'first', label: 'First Class' },
-  ];
+  // Local state for text inputs to allow free typing before validation/commit
+  const [departDateStr, setDepartDateStr] = useState('');
+  const [returnDateStr, setReturnDateStr] = useState('');
 
   const swapAirports = () => {
     const tempFrom = searchParams.from;
@@ -52,25 +34,32 @@ const FlightSearchForm = () => {
     }
   };
 
-  const updatePassengers = (type: 'adults' | 'children' | 'infants', delta: number) => {
-    const newValue = searchParams.passengers[type] + delta;
-    if (type === 'adults' && newValue < 1) return;
-    if (newValue < 0) return;
-    if (type === 'infants' && newValue > searchParams.passengers.adults) return;
+  const updatePassengers = (type: 'adults' | 'children' | 'infants', value: string) => {
+    const num = parseInt(value) || 0;
+    if (num < 0) return;
 
     setSearchParams({
       ...searchParams,
       passengers: {
         ...searchParams.passengers,
-        [type]: newValue,
+        [type]: num,
       },
     });
   };
 
-  const totalPassengers =
-    searchParams.passengers.adults +
-    searchParams.passengers.children +
-    searchParams.passengers.infants;
+  const handleDateChange = (dateString: string, type: 'depart' | 'return') => {
+    if (type === 'depart') setDepartDateStr(dateString);
+    else setReturnDateStr(dateString);
+
+    // Try to parse date (assuming format YYYY-MM-DD for simplicity in text input, or allow user to type)
+    // Using simple new Date() for "freely type" requirement often implies a standard format or loose parsing.
+    // Let's try to parse YYYY-MM-DD
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      if (type === 'depart') setSearchParams({ ...searchParams, departDate: date });
+      else setSearchParams({ ...searchParams, returnDate: date });
+    }
+  };
 
   const handleFromChange = (value: string) => {
     setSearchParams({
@@ -103,33 +92,24 @@ const FlightSearchForm = () => {
       transition={{ duration: 0.5, delay: 0.2 }}
       className="search-card w-full max-w-5xl mx-auto"
     >
-      {/* Trip Type Selection */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {tripTypes.map((type) => (
-          <button
-            key={type.value}
-            onClick={() => setSearchParams({ ...searchParams, tripType: type.value as any })}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${searchParams.tripType === type.value
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-          >
-            {type.label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {classTypes.map((type) => (
-          <button
-            key={type.value}
-            onClick={() => setSearchParams({ ...searchParams, class: type.value as any })}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${searchParams.class === type.value
-                ? 'bg-secondary text-secondary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-          >
-            {type.label}
-          </button>
-        ))}
+      {/* Trip Type & Class Selection - Text Inputs */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Trip Type</label>
+          <Input
+            placeholder="e.g. One Way, Round Trip"
+            value={searchParams.tripType}
+            onChange={(e) => setSearchParams({ ...searchParams, tripType: e.target.value as any })}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Class</label>
+          <Input
+            placeholder="e.g. Economy, Business"
+            value={searchParams.class}
+            onChange={(e) => setSearchParams({ ...searchParams, class: e.target.value as any })}
+          />
+        </div>
       </div>
 
       {/* Search Fields */}
@@ -177,176 +157,53 @@ const FlightSearchForm = () => {
         {/* Departure Date */}
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-muted-foreground mb-2">Departure</label>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <button className="input-flight w-full flex items-center gap-2 text-left">
-                <Calendar className="w-5 h-5 text-primary" />
-                {searchParams.departDate ? (
-                  <span className="font-semibold">
-                    {format(searchParams.departDate, 'dd MMM')}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Select date</span>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={searchParams.departDate || undefined}
-                onSelect={(date) => {
-                  setSearchParams({ ...searchParams, departDate: date || null });
-                  setDateOpen(false);
-                }}
-                disabled={(date) => date < new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <Input
+            placeholder="YYYY-MM-DD"
+            className="h-14"
+            onChange={(e) => handleDateChange(e.target.value, 'depart')}
+          />
         </div>
 
-        {/* Return Date (for round trip) */}
-        {searchParams.tripType === 'round-trip' && (
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-muted-foreground mb-2">Return</label>
-            <Popover open={returnDateOpen} onOpenChange={setReturnDateOpen}>
-              <PopoverTrigger asChild>
-                <button className="input-flight w-full flex items-center gap-2 text-left">
-                  <Calendar className="w-5 h-5 text-accent" />
-                  {searchParams.returnDate ? (
-                    <span className="font-semibold">
-                      {format(searchParams.returnDate, 'dd MMM')}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Select date</span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={searchParams.returnDate || undefined}
-                  onSelect={(date) => {
-                    setSearchParams({ ...searchParams, returnDate: date || null });
-                    setReturnDateOpen(false);
-                  }}
-                  disabled={(date) =>
-                    date < new Date() ||
-                    (searchParams.departDate ? date < searchParams.departDate : false)
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
+        {/* Return Date */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Return</label>
+          <Input
+            placeholder="YYYY-MM-DD"
+            className="h-14"
+            onChange={(e) => handleDateChange(e.target.value, 'return')}
+            disabled={searchParams.tripType !== 'round-trip'}
+          />
+        </div>
+      </div>
 
-        {/* Passengers */}
-        <div className={searchParams.tripType === 'round-trip' ? 'md:col-span-1' : 'md:col-span-2'}>
-          <label className="block text-sm font-medium text-muted-foreground mb-2">Travellers</label>
-          <Popover open={passengersOpen} onOpenChange={setPassengersOpen}>
-            <PopoverTrigger asChild>
-              <button className="input-flight w-full flex items-center gap-2 text-left">
-                <Users className="w-5 h-5 text-primary" />
-                <span className="font-semibold">{totalPassengers}</span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 p-4" align="end">
-              <div className="space-y-4">
-                {/* Adults */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Adults</div>
-                    <div className="text-sm text-muted-foreground">12+ years</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('adults', -1)}
-                      disabled={searchParams.passengers.adults <= 1}
-                    >
-                      -
-                    </Button>
-                    <span className="w-8 text-center font-semibold">
-                      {searchParams.passengers.adults}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('adults', 1)}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Children */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Children</div>
-                    <div className="text-sm text-muted-foreground">2-11 years</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('children', -1)}
-                      disabled={searchParams.passengers.children <= 0}
-                    >
-                      -
-                    </Button>
-                    <span className="w-8 text-center font-semibold">
-                      {searchParams.passengers.children}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('children', 1)}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Infants */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Infants</div>
-                    <div className="text-sm text-muted-foreground">Under 2 years</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('infants', -1)}
-                      disabled={searchParams.passengers.infants <= 0}
-                    >
-                      -
-                    </Button>
-                    <span className="w-8 text-center font-semibold">
-                      {searchParams.passengers.infants}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => updatePassengers('infants', 1)}
-                      disabled={searchParams.passengers.infants >= searchParams.passengers.adults}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+      {/* Passengers - Text Inputs */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Adults (12+)</label>
+          <Input
+            type="text"
+            placeholder="Number of adults"
+            value={searchParams.passengers.adults}
+            onChange={(e) => updatePassengers('adults', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Children (2-11)</label>
+          <Input
+            type="text"
+            placeholder="Number of children"
+            value={searchParams.passengers.children}
+            onChange={(e) => updatePassengers('children', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Infants (&lt;2)</label>
+          <Input
+            type="text"
+            placeholder="Number of infants"
+            value={searchParams.passengers.infants}
+            onChange={(e) => updatePassengers('infants', e.target.value)}
+          />
         </div>
       </div>
 
