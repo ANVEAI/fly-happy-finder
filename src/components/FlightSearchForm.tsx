@@ -51,13 +51,27 @@ const FlightSearchForm = () => {
     if (type === 'depart') setDepartDateStr(dateString);
     else setReturnDateStr(dateString);
 
-    // Try to parse date (assuming format YYYY-MM-DD for simplicity in text input, or allow user to type)
-    // Using simple new Date() for "freely type" requirement often implies a standard format or loose parsing.
-    // Let's try to parse YYYY-MM-DD
     const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
-      if (type === 'depart') setSearchParams({ ...searchParams, departDate: date });
-      else setSearchParams({ ...searchParams, returnDate: date });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const maxDate = new Date();
+      maxDate.setMonth(maxDate.getMonth() + 2);
+
+      // Validate: Not in past AND not beyond 2 months
+      if (date >= today && date <= maxDate) {
+        if (type === 'depart') setSearchParams({ ...searchParams, departDate: date });
+        else setSearchParams({ ...searchParams, returnDate: date });
+      } else {
+        // Date out of allowed range
+        if (type === 'depart') setSearchParams({ ...searchParams, departDate: null });
+        else setSearchParams({ ...searchParams, returnDate: null });
+      }
+    } else {
+      // Invalid date string
+      if (type === 'depart') setSearchParams({ ...searchParams, departDate: null });
+      else setSearchParams({ ...searchParams, returnDate: null });
     }
   };
 
