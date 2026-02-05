@@ -33,7 +33,7 @@
  
  export interface Passenger {
    id: string;
-   title: 'Mr' | 'Mrs' | 'Ms' | 'Master' | 'Miss';
+   title: string;
    firstName: string;
    lastName: string;
    age: number;
