@@ -171,7 +171,7 @@ const FlightSearchForm = () => {
             placeholder="YYYY-MM-DD"
             className="h-14"
             onChange={(e) => handleDateChange(e.target.value, 'return')}
-            disabled={searchParams.tripType !== 'round-trip'}
+            disabled={!searchParams.tripType.toLowerCase().includes('round')}
           />
         </div>
       </div>
